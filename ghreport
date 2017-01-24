@@ -77,12 +77,11 @@ ghreport - Generates a status of the User or Organization's repositories on gith
  phlow -organization|user handle [-token token] [-verbose]
  phlow -help | -man
 
- B<Example>
+B<Example>
 
- To generate a report of both public and private repos on the organization named 'Praqma', while printing the REST calls to github:
+To generate a report of both public and private repos on the organization named 'Praqma', while printing the REST calls to github:
 
-   $ ghreport -org praqma -verbose -token 89chdaf89f186add688db69a8823dc21d9b8f6
-
+ $ ghreport -org praqma -verbose -token 89chdaf89f186add688db69a8823dc21d9b8f6
 
 =head1 OPTIONS
 
