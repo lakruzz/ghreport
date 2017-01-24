@@ -1,0 +1,12 @@
+# Site settings
+title: GitHub Report
+tag_text: GitHub Report
+description: A script that generates a html report on the status of all repositories on either user or orgnaization
+css-path: http://code.praqma.com/css/praqmacode.css
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+exclude: ["README.md"]
+sass:
+  style: compressed

@@ -40,17 +40,13 @@
 <h1 id="SYNOPSIS">SYNOPSIS</h1>
 
 <pre><code> phlow -organization|user handle [-token token] [-verbose]
- phlow -help | -man
+ phlow -help | -man</code></pre>
 
- B&lt;Example&gt;
+<p><b>Examples:</b></p>
 
- To generate a report of both public and private repos on the organization named &#39;Praqma&#39;, while printing the REST calls to github:
+<p>To generate a report of bothe public and private repos on the organization named &#39;Praqma&#39;, while printing the REST calls to github:</p>
 
-   $ ghreport -org praqma -verbose -token 89chdaf89f186add688db69a8823dc21d9b8f6</code></pre>
-
-<h1 id="OPTIONS">OPTIONS</h1>
-
-<p><b>...more examples:</b></p>
+<pre><code>  $ ghreport -org praqma -verbose -token 89chdaf89f186add688db69a8823dc21d9b8f6</code></pre>
 
 <p>Same report silently - and without privte repos:</p>
 
@@ -71,6 +67,8 @@
 <p>And if you want the manual page as a html:</p>
 
 <pre><code>  $ pod2html ghreport &gt; ghreport-man.html</code></pre>
+
+<h1 id="OPTIONS">OPTIONS</h1>
 
 <dl>
 

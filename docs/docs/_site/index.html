@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="description" content="A kit that will enable you to display any data you collect as graphs in Jenkins">
+  <title>MonKit by Praqma</title>
+    <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="http://code.praqma.com/css/praqmacode.css">
+
+</head>
+<body>
+  <div class="container">
+    <h1><a href="./">MonKit Plugin for Jenkins CI</a></h1>
+    
+<iframe src="https://ghbtns.com/github-btn.html?user=Praqma&amp;repo=MonKit-Plugin&amp;type=watch&amp;count=true&amp;size=large&amp;v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="170" height="30"></iframe>
+
+
+
+    <p class="cuff">The MonKit plugin is used to display charts of data delivered in XML compliant with <a href="schemas/1.0.1/monkit.xsd">monkit.xsd</a>. Monkit also has a small Java API you can use to produce the XML.</p>
+
+<p class="warning">This plugin uses Googles graphing engine. Your Jenkins master should be able to access google’s API on the internet.</p>
+
+<p>The idea of this plugin is to make it easy to display graphs of data. If data is presented in xml complying to the
+<a href="http://code.praqma.net/schemas/monkit/1.0.1/monkit.xsd">monkit.xsd</a> a chart will be produced and displayed in the project.</p>
+
+<p>The basic format is given as a set of categories, which contains a set of observations. Each category will be displayed as a chart and each observation for a category will be a graph in that chart.</p>
+
+<p>For example:</p>
+
+<figure class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="nt">&lt;categories&gt;</span>
+  <span class="nt">&lt;category</span> <span class="na">name=</span><span class="s">"memory"</span> <span class="na">scale=</span><span class="s">"mb"</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;observations&gt;</span>
+      <span class="nt">&lt;observation</span> <span class="na">name=</span><span class="s">"Server 1"</span><span class="nt">&gt;</span>100<span class="nt">&lt;/observation&gt;</span>
+      <span class="nt">&lt;observation</span> <span class="na">name=</span><span class="s">"Server 2"</span><span class="nt">&gt;</span>200<span class="nt">&lt;/observation&gt;</span>
+    <span class="nt">&lt;/observations&gt;</span>
+  <span class="nt">&lt;/category&gt;</span>
+  <span class="nt">&lt;category</span> <span class="na">name=</span><span class="s">"disk"</span> <span class="na">scale=</span><span class="s">"gb"</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;observations&gt;</span>
+      <span class="nt">&lt;observation</span> <span class="na">name=</span><span class="s">"Server 1"</span><span class="nt">&gt;</span>41<span class="nt">&lt;/observation&gt;</span>
+      <span class="nt">&lt;observation</span> <span class="na">name=</span><span class="s">"Server 2"</span><span class="nt">&gt;</span>58<span class="nt">&lt;/observation&gt;</span>
+    <span class="nt">&lt;/observations&gt;</span>
+  <span class="nt">&lt;/category&gt;</span>
+<span class="nt">&lt;/categories&gt;</span></code></pre></figure>
+
+<p>The formation of the xml can be eased with a small tool, MonKit, which is written in java and can be found at <a href="https://github.com/Praqma/MonKit">github</a>.</p>
+
+<p>The charts looks like this:</p>
+
+<p><img src="images/disk.png" alt="Disk" class="pic center large" />
+<img src="images/memory.png" alt="Memory" class="pic center large" /></p>
+
+<p>As an additional feature, MonKit plugin can set the build health. This can be configured like this:</p>
+
+<p><img src="images/configure2.png" alt="Memory" class="pic center large" /></p>
+
+<p>This should be read as, the category “disk” is at full health at 75 or above and unstable at 50 and below. The values between these two numbers are interpolated to a build health percentage.</p>
+
+<h2 id="using-monkit">Using MonKit</h2>
+<p>This section will describe how to use MonKit as an API.</p>
+
+<p>For now there’s only an API for Java.</p>
+
+<h3 id="java">Java</h3>
+<p>MonKit can be included in your Maven project if you include our repository in the distributionManagement section and the dependency in the dependencies section - like this:</p>
+
+<figure class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="nt">&lt;repositories&gt;</span>
+  <span class="nt">&lt;repository&gt;</span>
+    <span class="nt">&lt;id&gt;</span>praqma<span class="nt">&lt;/id&gt;</span>
+    <span class="nt">&lt;name&gt;</span>praqma<span class="nt">&lt;/name&gt;</span>
+    <span class="nt">&lt;url&gt;</span>http://code.praqma.net/repo/maven<span class="nt">&lt;/url&gt;</span>
+  <span class="nt">&lt;/repository&gt;</span>
+  ...
+<span class="nt">&lt;/repositories&gt;</span>
+...
+<span class="nt">&lt;dependencies&gt;</span>
+  <span class="nt">&lt;dependency&gt;</span>
+    <span class="nt">&lt;groupId&gt;</span>net.praqma<span class="nt">&lt;/groupId&gt;</span>
+    <span class="nt">&lt;artifactId&gt;</span>monkit<span class="nt">&lt;/artifactId&gt;</span>
+    <span class="nt">&lt;version&gt;</span>0.1.6<span class="nt">&lt;/version&gt;</span>
+  <span class="nt">&lt;/dependency&gt;</span>
+  ...
+<span class="nt">&lt;/dependencies&gt;</span></code></pre></figure>
+
+<p>The API works as follows:</p>
+
+<ol>
+  <li>Create a MonKit instance.</li>
+  <li>Add a category</li>
+  <li>Add an observation</li>
+  <li>Repeat from 2 or 3</li>
+  <li>save() it</li>
+</ol>
+
+<p>By default MonKit saves the xml file to the current workspace in a file lled monkit.xml.</p>
+
+<p>The filename can be given as a File argument to the constructor or <code class="highlighter-rouge">save()</code>.</p>
+
+<p>Two static methods are available to generate MonKit instances:</p>
+
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">fromString</span><span class="o">(</span><span class="n">String</span><span class="o">);</span>
+<span class="nl">where:</span>
+  <span class="n">String</span> <span class="n">is</span> <span class="n">a</span> <span class="n">velformed</span> <span class="n">valid</span> <span class="n">MonKit</span> <span class="n">xml</span> <span class="n">String</span></code></pre></figure>
+
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">fromXML</span><span class="o">(</span><span class="n">File</span><span class="o">)</span>
+<span class="nl">Where:</span>
+  <span class="n">File</span> <span class="n">points</span> <span class="n">to</span> <span class="n">a</span> <span class="n">velformed</span> <span class="n">valid</span> <span class="n">MonKit</span> <span class="n">xml</span> <span class="n">File</span></code></pre></figure>
+
+<p>To exemplify:</p>
+
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">MonKit</span> <span class="n">mk</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MonKit</span><span class="o">();</span>
+<span class="n">mk</span><span class="o">.</span><span class="na">addCategory</span><span class="o">(</span><span class="s">"category"</span><span class="o">,</span> <span class="s">"scale"</span><span class="o">);</span>
+<span class="n">mk</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"name"</span><span class="o">,</span> <span class="s">"1"</span><span class="o">,</span> <span class="s">"category"</span><span class="o">);</span>
+<span class="n">mk</span><span class="o">.</span><span class="na">save</span><span class="o">();</span></code></pre></figure>
+
+<p>The previous code will produce a file called monkit.xml in the current working directory.</p>
+
+<p>The following code will produce three MonKit instances, merge them, create a final instance and save it to <code class="highlighter-rouge">myfile.xml</code> in the current working directory.</p>
+
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">MonKit</span> <span class="n">mk1</span> <span class="o">=</span> <span class="n">MonKit</span><span class="o">.</span><span class="na">fromString</span><span class="o">(</span><span class="s">"
+&lt;categories&gt;
+  &lt;category name=\"category\" scale=\"scale\"&gt;
+    &lt;observation name=\"name1\"&gt;7&lt;/observation&gt;
+    &lt;observation name=\"name2\"&gt;10&lt;/observation&gt;
+  &lt;/category&gt;&lt;category name=\"category2\" scale=\"scale2\"/&gt;
+&lt;/categories&gt;
+"</span> <span class="o">);</span>
+<span class="n">MonKit</span> <span class="n">mk2</span> <span class="o">=</span> <span class="n">MonKit</span><span class="o">.</span><span class="na">fromString</span><span class="o">(</span><span class="s">"
+&lt;categories&gt;
+  &lt;category name=\"category\" scale=\"scale\"&gt;
+    &lt;observation name=\"name1\"&gt;8&lt;/observation&gt;
+    &lt;observation name=\"name4\"&gt;11&lt;/observation&gt;
+  &lt;/category&gt;&lt;category name=\"category2\" scale=\"scale2\"/&gt;
+&lt;/categories&gt;
+"</span> <span class="o">);</span>
+<span class="n">MonKit</span> <span class="n">mk3</span> <span class="o">=</span> <span class="n">MonKit</span><span class="o">.</span><span class="na">fromString</span><span class="o">(</span><span class="s">"
+&lt;categories&gt;
+  &lt;category name=\"category2\" scale=\"scale\"&gt;
+    &lt;observation name=\"name44\"&gt;9&lt;/observation&gt;
+    &lt;observation name=\"name22222\"&gt;12&lt;/observation&gt;
+  &lt;/category&gt;
+&lt;/categories&gt;
+"</span> <span class="o">);</span>
+<span class="n">MonKit</span> <span class="n">mk</span> <span class="o">=</span> <span class="n">MonKit</span><span class="o">.</span><span class="na">merge</span><span class="o">(</span><span class="n">mk1</span><span class="o">,</span><span class="n">mk2</span><span class="o">,</span><span class="n">mk3</span><span class="o">);</span>
+<span class="n">mk</span><span class="o">.</span><span class="na">save</span><span class="o">(</span><span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="s">"myfile.xml"</span><span class="o">));</span></code></pre></figure>
+
+<p>The Javadoc can be seen at <a href="http://code.praqma.com/monkit-plugin/javadoc]">http://code.praqma.com/monkit-plugin/javadoc</a></p>
+
+    
+
+<a class="github-link" href="
+https://github.com/Praqma/MonKit-Plugin/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+"  target="_blank">GitHub issues</a>
+
+
+
+    
+
+
+
+
+<a class="jenkins-link" href="https://issues.jenkins-ci.org/issues/?jql=project%20%3D%20JENKINS%20AND%20status%20in%20(Open%2C%20%22In%20Progress%22%2C%20Reopened)%20AND%20component%20%3D%20%27monkit%27" target="_blank">Open issues on Jenkins Community</a>
+
+
+
+    
+
+<a class="jenkins-link" href="
+http://stats.jenkins-ci.org/plugin-installation-trend/monkit-plugin.stats.json"  target="_blank">Plugin usage Statistics (<code>.JSON</code>)</a>
+
+
+
+
+  </div>
+</body>
+</html>
