@@ -19,3 +19,10 @@ nytprof.out
 *.bs
 /_eumm/
 pod2h*
+.DS_Store
+_site/
+.sass-cache/
+.jekyll-metadata
+*/_site/
+*/\.sass-cache/
+*~
