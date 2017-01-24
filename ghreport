@@ -1,0 +1,877 @@
+#!/usr/bin/perl
+require 5.14.0;
+use strict;                # http://perldoc.perl.org/strict.html
+use Carp;                  # http://perldoc.perl.org/Carp.html
+use Cwd;                   # http://perldoc.perl.org/Cwd.html
+
+# File version
+our $VERSION    = "1.0";                             #major.minor
+our $PATCH      = "1";                               #patch
+
+use Getopt::Long;          # http://perldoc.perl.org/Getopt/Long.html
+use Pod::Usage;            # http://perldoc.perl.org/Pod/Usage.html
+use File::Basename;        # http://perldoc.perl.org/File/Basename.html
+use JSON::PP; # http://search.cpan.org/~makamaka/JSON-PP-2.27400/lib/JSON/PP.pm Included in perl cores since 5.14
+
+# Assume local modules are in sub folders relative to this script
+use lib dirname(__FILE__);
+
+# Define the global variables that are used to cache the value of our options
+our (
+	$Sw_org, $Sw_user, $Sw_token, $Sw_verbose, $Outfile, %Header_row,
+);
+
+%Header_row = (  # order => ( description, classes)
+  1 => ['Name',                  'cell width-standard'],
+	2 => ['Description',           'cell width-wide'],
+	3 => ['Visiblity',             'cell width-narrow'],
+	4 => ['Origin',                'cell width-narrow'],
+	5 => ['Default branch',        'cell width-narrow'],
+	6 => ['Open issues',           'cell width-tiny'],
+	7 => ['Language',              'cell width-narrow'],
+	8 => ['README',                'cell width-narrow'],
+	9 => ['Frontmatter',           'cell width-standard']
+);
+
+GetOptions(
+  (
+    "organization=s"       => \$Sw_org,
+		"user=s"               => \$Sw_user,
+		"verbose!"             => \$Sw_verbose,
+		"token=s"              => \$Sw_token,
+		"help"                 => sub { pod2usage(-exitval => 0, -verbose => 1) },
+    "man"                  => sub { pod2usage(-exitval => 0, -verbose => 2) }
+	)
+) || pod2usage(-exitval => 1, -verbose => 0);
+
+&validate_context();
+
+
+# Open html report file
+my($basename, $dir, $suffix) = fileparse(__FILE__,qr/\.[^.]*/);
+$Outfile = lc( $dir.$basename."-".$Sw_user.$Sw_org.'.html' );
+open HTMLFILE, ">$Outfile" || croak "Couldn't open '$Outfile'\n";
+
+report( user => $Sw_user,
+  organization => $Sw_org,
+	token => $Sw_token,
+	verbose => $Sw_verbose );
+
+print "Report is in '$Outfile'\n";
+close HTMLFILE;
+
+exit(0);
+
+###################################################
+
+# Below is all the POD documentation following the conventional chapters as described in (http://perldoc.perl.org/perlpod.html). The functions are implemented after the last pod chapter FUNCTIONS is declared.
+
+=pod
+
+=head1 NAME
+
+ghreport - Generates a status of the User or Organization's repositories on github.
+
+=head1 SYNOPSIS
+
+ phlow -organization|user handle [-token token] [-verbose]
+ phlow -help | -man
+
+B<Examples:>
+
+To generate a report of bothe public and private repos on the organization named 'Praqma', while printing the REST calls to github:
+
+  $ ghreport -org praqma -verbose -token 89chdaf89f186add688db69a8823dc21d9b8f6
+
+Same report silently - and without privte repos:
+
+  $ ghreport -org praqma
+
+For a report on a user's repos:
+
+  $ ghreport -user lakruzz
+
+In all cases the report is saved in file in the format:
+
+B< C<< ghreport-<user|organization>.html> >> >
+
+To get the full help:
+
+  $ ghreport -man
+
+And if you want the manual page as a html:
+
+  $ pod2html ghreport > ghreport-man.html
+
+=head1 OPTIONS
+
+=over 8
+
+=item B< C<< -organization|-user handle >> >
+
+The organization or user (the GitHub handle) to report on.
+
+=item B< C<< -token token >> >
+
+Token required to access private data.
+
+Create the token from your L<GitHub account|https://github.com/settings/tokens>
+
+=item B< C<< -help >> >
+
+Print a brief help message.
+
+=item B< C<< -man >> >
+
+Prints the manual page.
+
+=back
+
+=head1 DESCRIPTION
+
+
+B<Copyright>
+
+Praqma, 2017, L<www.praqma.com|http://www.praqma.com>
+
+B<License>
+
+M.I.T.
+
+B<Repository>
+
+L<github.com/praqma/noops|http://github.com/praqma/noops>
+
+B<Support>
+
+Use the L<issue system|http://github.com/praqma/noops/issues> in the repo.
+
+=head1 FUNCTIONS
+
+=cut
+
+sub validate_context(){
+
+=head2 validate_context
+
+The function checks that all options are applied correct and unambiguously and it check that the execution takes place in a valid context. The test operates on the global variables that was used to cache the parameters. (by convention all variables named C<$Sw_...>).
+
+B<Input:> void
+
+B<Returns:> void
+
+The function is essentially an assertion - if anything is found to be out of order it will terminate the execution.
+
+=cut
+
+  # Are options applied correctly?
+	defined($Sw_org) || defined($Sw_user) || pod2usage(
+	  -exitval => 0,
+		-verbose => 1,
+	  -message => "Either -organization or -user  is required");
+  defined($Sw_org) && defined($Sw_user) && pod2usage(
+	  -exitval => 0,
+		-verbose => 1,
+	  -message => "Both -organization and -user can not be used together");
+  # Defaults
+	$Sw_verbose = defined($Sw_verbose) ? $Sw_verbose : 0;
+};
+
+sub report ($){
+
+=head2 report
+
+This function generates the report
+
+B<Input:> C<%options>
+
+A hash containing key:value tuples of options.
+
+E.g.
+
+  report( user => $Sw_user,
+    organization => $Sw_org,
+    token => $Sw_token,
+    verbose => $Sw_verbose);
+
+=over
+
+=item B< C<< user >> > I<(scalar) [either user or organization is required]>
+
+A user's GitHub handle. C<user> and C<organiszation> are mutual exclusive, then can not both have a value. The example shown obove is unly allowed if one of them is defined, and the other is undefined.
+
+=item B< C<< organization >> > I<(scalar) [either user or organization is required]>
+
+An organizations's GitHub handle.
+
+=item B< C<< token >> > I<(scalar) [optional]>
+
+A token, that will allow private repositories to be included in the report.
+
+=item B< C<< verbose >> > I<(scalar) [optional]>
+
+Will be used as a boolean to indicate if execution should be verbose or silent. Verbose execution will print out the commands being executed.
+
+=back
+
+=cut
+
+  my %opt = @_;
+	croak "input parameter for either 'organization' or 'user' is required" unless ( $opt{organization} || $opt{user} );
+  if ( defined($opt{organization}) && defined($opt{user}) )	{
+		croak "can't define both 'organization' and 'user'";
+	};
+
+  my $gh_api = "https://api.github.com/";
+	my ($org_header, @org_json );
+  my $h_type = (defined $opt{organization})? 'orgs/' : 'users/';
+
+  croak "Hmmm?" if &ghapi( # Get the organization details
+	  rest => $gh_api.$h_type.$opt{organization}.$opt{user},
+		header => \$org_header,
+		json => \@org_json,
+		token => $opt{token} );
+
+	my ($repo_header, @repo_json );
+
+	croak "Hmmm?" if &ghapi( #Get the first page of repos
+	  rest => $org_json[0]->{repos_url},
+		query => 'per_page=100', # 100 is max here, 20 is default
+		header => \$repo_header,
+		json => \@repo_json,
+		token => $opt{token} );
+
+  ## We need to see if we got all the pages, the information is in the 'links' key in the header returned from the ghapi
+  our %links;
+  &get_links_from_header( header => \$repo_header, links => \%links);
+
+  while ($links{next}) {
+
+		my $next_page = $links{next};
+		undef %links;
+		undef $repo_header;
+
+ 	  croak "Hmmm?" if &ghapi( #Get the next page of repos
+   	  rest => $next_page,
+   		header => \$repo_header,
+   		json => \@repo_json,
+   		token => $opt{token} );
+
+ 	  &get_links_from_header( header => \$repo_header, links => \%links);
+
+  };
+
+	print HTMLFILE &html_begin();
+
+	print HTMLFILE column_headers(\%Header_row);
+
+	foreach my $j (@repo_json){
+
+		my $column = 0;
+
+    print HTMLFILE "<div class='row'>";
+
+		print HTMLFILE div (
+		  txt =>    $j->{ name },
+      class =>  $Header_row{++$column}[1],
+			id => $j->{name},
+			link => $j->{html_url},
+			silent => 1 );
+
+		print HTMLFILE div (
+		  txt => $j->{description},
+      class => $Header_row{++$column}[1],
+			silent => 1);
+
+	  print HTMLFILE div ( txt => ($j->{private})? 'Private' : 'Public',
+		  class => $Header_row{++$column}[1],
+			silent => 1	);
+
+		print HTMLFILE div ( txt => ($j->{fork} )? 'Fork' : 'Origin',
+		  class => $Header_row{++$column}[1],
+			silent => 1	);
+
+		print HTMLFILE div ( txt => $j->{default_branch},
+	    class => $Header_row{++$column}[1],
+			silent => 1);
+
+		print HTMLFILE div ( txt => $j->{open_issues},
+	    class => $Header_row{++$column}[1],
+			silent => 1,
+			link => $j->{html_url}.'/issues');
+
+		print HTMLFILE div ( txt => $j->{language},
+	    class => $Header_row{++$column}[1],
+			silent => 1);
+
+    my ($fm, $r_name, $r_url );
+
+		&get_frontmatter_from_readme( repo => $j->{url},
+		  token => $opt{token},
+			frontmatter => \$fm,
+			readme_name => \$r_name,
+			readme_url => \$r_url);
+
+		print HTMLFILE div ( txt => $r_name,
+	    class => $Header_row{++$column}[1],
+			silent => 1,
+			link => $r_url);
+
+    $fm =~ s/ /\&nbsp/g;
+		$fm =~ s/\n/\<\/br\>/g;
+		print HTMLFILE div ( txt => $fm,
+	    class => $Header_row{++$column}[1],
+			silent => 1);
+
+		print HTMLFILE "</div>";
+
+	};
+
+	print HTMLFILE &html_end();
+};
+
+sub ghapi ($){
+
+=head2 ghapi
+
+REST calls to the GitHub API
+
+Example:
+
+  my ($header, @json);
+  die unless ghapi( rest => 'https://api.github.com/users/lakruzz',
+    header => \$header,
+    json => \@json,
+    token => $opt{token} );
+  print $json[0]->{repos_url};
+
+B<Returns:>
+
+0 for successful execution and 1 if errors occured.
+
+B<Input:> C<%options>
+
+A hash containing key:value tuples of options.
+
+NOTE: Some are out-parameters
+
+=over
+
+=item B< C<< rest >> > I<(string) [required]>
+
+The REST api to call
+
+=item B< C<< query >> > I<(string) [optional]>
+
+The query string to apply, if any.
+
+key=value are specified as CGI parameters, joint by equals (C<=>). If more tuples are applied they must be seperated by ampersand (C<&>)
+
+E.g.
+
+  per_page=100&page=3
+
+=item B< C<< token >> > I<(scaler) [optional]>
+
+A token that will allow private repositories to be included in the report.
+
+=item B< C<< header >> > I<(scalar reference) [required]>
+
+NOTE: Output parameter.
+
+Will contain the header returned from the REST call.
+
+=item B< C<< json >> > I<(list reference) [required]>
+
+NOTE: Output parameter.
+
+Will contain the JSON objects decoded from the REST call
+
+=back
+
+=cut
+
+  my %opt = @_;
+  my $curl = ( $opt{token} ) ? 'curl -s -i -u :'.$opt{token}.' ':'curl -s -i ';
+  my $j = JSON::PP->new->utf8;
+  $j->relaxed([1]);
+
+	my $q_delim;
+	defined($opt{query}) && do {
+		$q_delim = ($opt{rest} =~ /\?/) ? "&" : "?";
+	};
+
+  my $cmd = $curl.$opt{rest}.$q_delim.$opt{query};
+	# make the URL command line safe, escape [?=&]
+	$cmd =~ s/\?/\\\?/g;
+	$cmd =~ s/\=/\\\=/g;
+	$cmd =~ s/\&/\\\&/g;
+
+	my $res =	cmd(
+  		command => $cmd,
+  		verbose => $Sw_verbose ); # TODO don't use global vars in subs
+
+	${$opt{header}} = '';
+
+	if ( $res =~ /^(.*)\n(\{.*\})$/s  # contains only one JSON
+	){
+    ${$opt{header}} = $1;
+		push (@{$opt{json}}, $j->decode($2) );
+	} else {
+		croak "Not a valid JSON, and not a list of JSONs either"
+		  unless $res =~ /^(.*)\n(\[.*\])$/s;
+		${$opt{header}} = $1;
+		my $json_list = $2;
+		$json_list =~ s/\[//; # The reading '[' will have to go
+	  $json_list =~ s/\]//; # and the tailing ']' as well
+		foreach my $json (split (/(?!\})\s*,\s*(?=\{)/ , $json_list )){
+		  # using lookbehind (?! ) and lookahead (?= ) to make the match larger, than what we're actuallyy splitting on (the comman and the whitespace just before and after).
+			push (@{$opt{json}}, $j->decode($json) );
+		};
+	};
+
+  my $val;
+
+	croak unless &get_from_ghapi_header(
+	  header => $opt{header},
+		key => 'status',
+		value => \$val);
+
+	return not $val =~ /OK/;
+
+};
+
+sub get_from_ghapi_header($){
+
+=head2 get_from_ghapi_header
+
+Reads a value of a specified key in a header returned from a succesful call to the GitHub API.
+
+B<Input:> C<%options>
+
+B<Returns:> C<0|1>
+
+Returns 1 if key is found and value retrieved.
+Returns 0 if not.
+
+NOTE: Even invalid calls to the GitHub API indicates successful execution, the actual error state must be read from the header.
+
+Example:
+
+  my $val;
+  croak unless get_from_ghapi_header(
+    header => $opt{header},
+    key => 'status',
+    value => \$val);
+  return not $val =~ /OK/;
+
+=over
+
+=item B< C<< header >> > I<(scalar reference) [required]>
+
+A reference to a scalar containing the header as returned from a valid GitHub API call.
+
+=item B< C<< key >> > I<(scaler) [required]>
+
+The key to lookup in the header
+
+=item B< C<< value >> > I<(scalar reference) [required]>
+
+NOTE: Output parameter.
+
+Will contain the value returned from the key in the header.
+
+=back
+
+=cut
+
+	my %opt = @_;
+	my $regexp = '^('.$opt{key}.'):\s*(.*)\s*$';
+	my $status = ( ${$opt{header}} =~ /$regexp/mi ) ? 1 : 0;
+	${$opt{value}} = $2;
+	return $status;
+};
+
+sub get_links_from_header($){
+
+=head2 get_links_from_header
+
+Retrieved the links (next, prev, last) from headers that delivered multiple pages
+
+B<Input:> C<%option>
+
+B<Returns:> void
+
+=over
+
+=item B< C<< header >> > I<(scalar reference) [required]>
+
+A reference to a scalar containing the header as returned from a valid GitHub API call.
+
+=item B< C<< links >> > I<(hash reference) [required]>
+
+A reference to a hash which will retrive the key => value tuples of links (next, prev, last) and their correspontinf URLs
+
+=back
+
+=cut
+
+  my %opt = @_;
+	my $retval;
+
+	&get_from_ghapi_header(
+	  header => $opt{header},
+	  key => 'link',
+	  value => \$retval);
+
+  foreach my $s (split(/\s*,\s*/, $retval)){
+		$s =~ /<(.*)>;\s*rel="(.*)"\s*/s;
+		my $k = $2;
+		my $v = $1;
+		$opt{links}->{$k} = $v;
+	};
+};
+
+sub column_headers($){
+
+=head2 column_headers
+
+The function returns the columnn headers.
+
+B<Input:> B< C<< scalar >> > I<(scalar) [required]>
+
+A comma seperated list of headers in correct order
+
+B<Returns:> C<html> I<(scalar)>
+
+=cut
+
+  my $headers = shift;
+	my $retval;
+
+	my $count = 1;
+
+	foreach ( keys(%{$headers}) ){
+		$retval = $retval."\n".div( txt => $headers->{$count}[0],
+		  class => 'header '.$headers->{$count++}[1],
+			silent => 1	)
+	};
+  return $retval;
+}
+
+
+sub html_begin(){
+
+=head2 html_begin
+
+The function returns the initial HTML before content, most important the C<head> insluding styles.
+
+B<Input:> void
+
+B<Returns:> C<html> I<(scalar)>
+
+=cut
+
+my $t = <<ENDHEADER;
+<html lang="en">
+  <head>
+    <meta charset='utf-8'>
+		<style>
+		.header {
+      font-weight: bold;
+      background-color: #000;
+      height: 2em;
+      color: #FFF;
+      font-family: sans-serif;
+      border-bottom-style: none;
+    }
+		.cell {
+      vertical-align: top;
+      padding: 5px;
+      float: left;
+      display: block;
+    }
+		.row {
+			clear:left;
+			float: left;
+			display: block;
+			border-bottom: #FF9800;
+			border-bottom-style: solid;
+			border-bottom-width: 0.1em;
+			min-height: 1.1em;
+		}
+		.width-tiny {
+			width : 70px
+		}
+		.width-narrow {
+			width: 100px;
+		}
+		.width-standard {
+			width : 200px;
+		}
+		.width-wide {
+			width : 350px;
+		}
+		a {
+      color: #823205;
+      font-weight: 400;
+      text-decoration: none;
+      transition: color 0.5s ease;
+      transition: text-shadow 0.5s ease;
+    }
+		a:hover {
+      color: #bb2a0b;
+      text-shadow: #e8910f 0px 0px 2px;
+    }
+		</style>
+  </head>
+  <body>
+
+ENDHEADER
+
+return $t;
+};
+
+sub html_end(){
+
+=head2 html_end
+
+The function returns the closing HTML tags after content.
+
+B<Input:> void
+
+B<Returns:> C<html> I<(scalar)>
+
+=cut
+
+my $t  = <<ENDHEADER;
+  </body>
+</html>
+
+ENDHEADER
+
+return $t;
+};
+
+
+sub cmd ($) {
+
+=head2 cmd
+
+Safe execution of shell commands
+
+B<Input:> %options
+
+A hash containing the options and parameters to execute
+
+=over
+
+=item B< C<< command >> > I<(scalar) [required]>
+
+The commend to execute
+
+=item B< C<< verbose >> > I<(scalar) [optional]>
+
+Default = 0 (false)
+
+When true, the command will be typed just prior to execution.
+
+=item B< C<< die_on_err >> > I<(scalar) [optional]>
+
+Default is 1 (true)
+
+When set to true, the program will terminate, using croak, if the command execution returns a non-zero value.
+
+=item B< C<< return_array >> > I<(scalar) [optional]>
+
+Default is 0 (false)
+
+true:  Returns an array
+false: Returnas a scalar
+
+=item B< C<< merge_errout >> > I<(scalar) [optional]>
+
+Default is 1 (true)
+
+When true, ERROUT is piped into STDOUT
+
+=back
+
+=cut
+
+    my %opt = @_;
+    croak "input parameter for key 'command' required" unless ( $opt{command} );
+
+    # Set the defaults if unset
+    defined( $opt{die_on_err} )   ||  do {$opt{die_on_err}   = 1};
+		defined( $opt{merge_errout} ) ||  do {$opt{merge_errout} = 1};
+		defined( $opt{verbose} )      ||  do {$opt{verbose}      = 1};
+		defined( $opt{return_array} ) ||  do {$opt{return_array} = 0};
+
+    my $cmd = $opt{command} . ' 2>&1';
+		$opt{verbose} && print $opt{command}."\n";
+    my @res = qx($cmd);
+
+    # Report errors unless we expect the call to generate non-zero exit value
+    unless ( $opt{err_ok} ) {
+        if ($?) {
+            croak "Execution of [$cmd] returned a non-zero value (".( ($?) / 256 ).")";
+        }
+    };
+    return ( $opt{return_array} ) ? @res : join( '', @res );
+}
+
+sub div($){
+
+=head2 div
+
+Generates a C<div> tag based on input content
+
+B<Input> C<%options>
+
+A hash of content to apply
+
+B<Returns> C<html> I<(scalar)>
+
+=over
+
+=item B< C<< txt >> > I<(scalar) [optional]>
+
+The content of the div.
+
+=item B< C<< id >> > I<(scalar) [optional]>
+
+Set as id property of the div.
+
+=item B< C<< class >> > I<(scalar) [optional]>
+
+Set as class property of the div.
+
+=item B< C<< style >> > I<(scalar) [optional]>
+
+Set as style property of the div.
+
+=item B< C<< silent >> > I<(scalar) [optional]>
+
+Prints the generated C<div> tag to STDOUT, unless silent is defined. In both cases the generate html is returned.
+
+=item B< C<< link >> > I<(scalar) [options]>
+
+Contains a link that will be used a link C<< <A href="..."> >> for the C<txt> in the cell. If the link starts with C<http>, then the target will be a new window.
+
+=back
+
+=cut
+
+	my %opt = @_;
+	my $id     = defined $opt{id}       ? ' id="'.$opt{id}.'"'            : '';
+	my $class  = defined $opt{class}    ? ' class="'.$opt{class}.'"'      : '';
+	my $style  = defined $opt{style}    ? ' style="'.$opt{style}.'"'      : '';
+  my $target = $opt{link} =~ /^http/  ? ' target="_blank" '             : '';
+	my $a_1    = defined $opt{link}     ? ' <a href="'.$opt{link}.'"'.$target.'>'    : '';
+	my $a_2    = defined $opt{link}     ? ' </a>'                         : '';
+
+	my $retval = "<div".$id.$class.$style.">\n".
+	             "  ".$a_1.$opt{txt}.$a_2."\n".
+						   "</div>"."\n";
+
+	print  $retval unless defined $opt{silent}; #TODO 'silent' should be true, not just defined
+  return $retval;
+};
+
+sub get_frontmatter_from_readme($){
+
+=head2 get_frontmatter_from_readme
+
+Reads the C<README.md> file from a repo and returns the YAML in the frontmatter (Jekyll).
+
+B<Input> C<%options>
+
+A hash of options
+
+B<Returns> C<0|1>
+
+Returns 1 if a frontmatter is sucessfully retrived.
+
+Otherwise it returns 0;
+
+=over
+
+=item B< C<< repo >> > I<(scalar) [optional]>
+
+The github rest api to the repo to lookup.
+
+=item B< C<< token >> > I<(scalar) [optional]>
+
+A token, that will allow private repositories to be included in the report.
+
+=item B< C<< frontmatter >> > I<(scalar reference) [optional]>
+
+NOTE: Output paramenter
+
+Will contain the frontmatter from the readme file if any.
+
+=item B< C<< readme_url >> > I<(scalar reference) [optional]>
+
+NOTE: Output paramenter
+
+Will contain the url to the readme file if any.
+
+=item B< C<< readme_name >> > I<(scalar reference) [optional]>
+
+NOTE: Output paramenter
+
+Will contain the (case sensitive) name of the readme file.
+
+=back
+
+=cut
+
+	my %opt = @_;
+
+	$opt{repo};
+	$opt{token};
+	$opt{frontmatter};
+
+	my $curl = ( $opt{token} ) ? 'curl -s -u :'.$opt{token}.' ':'curl -s ';
+
+
+	my $rest = $opt{repo}.'/readme';
+
+	my $res;
+	my $header;
+	my @json;
+
+	&ghapi( # Get the organization details
+	  rest => $opt{repo}.'/readme',
+	  header => \$header,
+	  json => \@json,
+	  token => $opt{token} );
+
+	my $val;
+
+  &get_from_ghapi_header(
+	  header => \$header,
+		key => 'status',
+		value => \$val);
+
+ 	if ( not $val =~ /OK/){
+	  return 0;
+	} else {
+		if ($json[0]->{download_url}){
+			$res = &cmd( command => $curl.$json[0]->{download_url},
+			verbose => $Sw_verbose );
+			# Find the frontmatter;
+			${$opt{readme_name}} = $json[0]->{name};
+			${$opt{readme_url}} = $json[0]->{html_url};
+			if ( $res =~ /^\s*---\s*(.*)\s*---\s*/s) {
+        ${$opt{frontmatter}} = $1;
+				return 1;
+			};
+			return 0;
+		}
+	}
+};
+
+
+__END__
