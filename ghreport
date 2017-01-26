@@ -24,7 +24,7 @@ our (
 %Header_row = (  # order => ( description, classes)
   1 => ['Name',                  'cell width-standard'],
 	2 => ['Description',           'cell width-wide'],
-	3 => ['Visiblity',             'cell width-narrow'],
+	3 => ['Visibility',            'cell width-narrow'],
 	4 => ['Origin',                'cell width-narrow'],
 	5 => ['Default branch',        'cell width-narrow'],
 	6 => ['Open issues',           'cell width-tiny'],
@@ -200,7 +200,7 @@ E.g.
 
 =item B< C<< user >> > I<(scalar) [either user or organization is required]>
 
-A user's GitHub handle. C<user> and C<organiszation> are mutual exclusive, then can not both have a value. The example shown obove is unly allowed if one of them is defined, and the other is undefined.
+A user's GitHub handle. C<user> and C<organization> are mutual exclusive, then can not both have a value. The example shown obove is unly allowed if one of them is defined, and the other is undefined.
 
 =item B< C<< organization >> > I<(scalar) [either user or organization is required]>
 
