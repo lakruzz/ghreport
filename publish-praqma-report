@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+cd `git rev-parse --show-toplevel`;
+git checkout master;
+./ghreport -org praqma -verbose -token `security find-internet-password -a lakruzz -s github.com -l 'ghi token' -w`;
+mv -f ghreport-praqma.html docs/.;
+git addremove;
+git commit -m "Updated praqma report";
+git push;
