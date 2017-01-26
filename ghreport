@@ -265,7 +265,15 @@ Will be used as a boolean to indicate if execution should be verbose or silent. 
 
 	print HTMLFILE &html_begin();
 
+	use DateTime;
+	my $dt = DateTime->now;
+	my $time = join ' ', $dt->ymd, $dt->hms;
+
+	print HTMLFILE '<div class="row"><div>Report generated <em>'.$time.'</em></div></div>';
+
+  print HTMLFILE '<div class="row">';
 	print HTMLFILE column_headers(\%Header_row);
+	print HTMLFILE '</div>';
 
 	foreach my $j (@repo_json){
 
