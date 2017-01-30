@@ -22,6 +22,7 @@
       <li><a href="#report">report</a></li>
       <li><a href="#ghapi">ghapi</a></li>
       <li><a href="#get_from_ghapi_header">get_from_ghapi_header</a></li>
+      <li><a href="#sort_array_of_hashes">sort_array_of_hashes</a></li>
       <li><a href="#get_links_from_header">get_links_from_header</a></li>
       <li><a href="#column_headers">column_headers</a></li>
       <li><a href="#html_begin">html_begin</a></li>
@@ -31,6 +32,7 @@
       <li><a href="#get_frontmatter_from_readme">get_frontmatter_from_readme</a></li>
     </ul>
   </li>
+  <li><a href="#POD-ERRORS">POD ERRORS</a></li>
 </ul>
 
 <h1 id="NAME">NAME</h1>
@@ -39,14 +41,16 @@
 
 <h1 id="SYNOPSIS">SYNOPSIS</h1>
 
-<pre><code> phlow -organization|user handle [-token token] [-verbose]
+<pre><code> phlow -organization|user handle [-token token] [-verbose] [-sort sort_order]
  phlow -help | -man</code></pre>
 
 <p><b>Example</b></p>
 
+<pre><code>  $ ghreport -user lakruzz -sort +private,-open_issues,+name</code></pre>
+
 <p>To generate a report of both public and private repos on the organization named &#39;Praqma&#39;, while printing the REST calls to github:</p>
 
-<pre><code> $ ghreport -org praqma -verbose -token 89chdaf89f186add688db69a8823dc21d9b8f6</code></pre>
+<pre><code>  $ ghreport -org praqma -verbose -token 89chdaf89f186add688db69a8823dc21d9b8f6</code></pre>
 
 <h1 id="OPTIONS">OPTIONS</h1>
 
@@ -78,6 +82,18 @@
 <dd>
 
 <p>The organization or user (the GitHub handle) to report on.</p>
+
+</dd>
+<dt id="sort-sort_order"><b> <code>-sort sort_order</code> </b></dt>
+<dd>
+
+<p>Sort_order is a comma separated list of keys to sort by each item may be prefixed with <code>-</code> for decending and <code>+</code> for Ascending (ascending is used id the prefix is omitted):</p>
+
+<p>E.g.</p>
+
+<pre><code>  +private,-open_issues,+name</code></pre>
+
+<p>The keys can be any valis 1st level key in the JSON returned by GitHub API.</p>
 
 </dd>
 <dt id="token-token"><b> <code>-token token</code> </b></dt>
@@ -152,7 +168,7 @@
 <dt id="user-scalar-either-user-or-organization-is-required"><b> <code>user</code> </b> <i>(scalar) [either user or organization is required]</i></dt>
 <dd>
 
-<p>A user&#39;s GitHub handle. <code>user</code> and <code>organiszation</code> are mutual exclusive, then can not both have a value. The example shown obove is unly allowed if one of them is defined, and the other is undefined.</p>
+<p>A user&#39;s GitHub handle. <code>user</code> and <code>organization</code> are mutual exclusive, then can not both have a value. The example shown obove is unly allowed if one of them is defined, and the other is undefined.</p>
 
 </dd>
 <dt id="organization-scalar-either-user-or-organization-is-required"><b> <code>organization</code> </b> <i>(scalar) [either user or organization is required]</i></dt>
@@ -283,6 +299,34 @@
 <p>NOTE: Output parameter.</p>
 
 <p>Will contain the value returned from the key in the header.</p>
+
+</dd>
+</dl>
+
+<h2 id="sort_array_of_hashes">sort_array_of_hashes</h2>
+
+<p>Sort&#39;s an array (ref) of hashes by multiple sort orders</p>
+
+<p><b>Input</b> $array_ref, $sort_order</p>
+
+<dl>
+
+<dt id="array_ref-scalar-required"><b> <code>&lt;array_ref</code></b> &gt; <i>(scalar) [required]</i></dt>
+<dd>
+
+<p>A refernce to the array of hashes, that shall be sorted</p>
+
+</dd>
+<dt id="sort_order-scalar-required"><b> <code>&lt;sort_order</code></b> &gt; <i>(scalar) [required]</i></dt>
+<dd>
+
+<p>A comma separated list of keys to sort by each item may be prefixed with <code>-</code> for decending and <code>+</code> for Ascending (ascending is used id the prefix is omitted):</p>
+
+<p>E.g.</p>
+
+<pre><code>  +private,-open_issues,+name</code></pre>
+
+<p><b>Returns</b> void</p>
 
 </dd>
 </dl>
@@ -487,6 +531,20 @@
 <p>NOTE: Output paramenter</p>
 
 <p>Will contain the (case sensitive) name of the readme file.</p>
+
+</dd>
+</dl>
+
+<h1 id="POD-ERRORS">POD ERRORS</h1>
+
+<p>Hey! <b>The above document had some coding errors, which are explained below:</b></p>
+
+<dl>
+
+<dt id="Around-line-597">Around line 597:</dt>
+<dd>
+
+<p>You forgot a &#39;=back&#39; before &#39;=head2&#39;</p>
 
 </dd>
 </dl>

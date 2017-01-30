@@ -18,7 +18,7 @@ use lib dirname(__FILE__);
 
 # Define the global variables that are used to cache the value of our options
 our (
-	$Sw_org, $Sw_user, $Sw_token, $Sw_verbose, $Outfile, %Header_row,
+	$Sw_org, $Sw_user, $Sw_token, $Sw_verbose, $Outfile, %Header_row, $Sw_sort
 );
 
 %Header_row = (  # order => ( description, classes)
@@ -39,6 +39,7 @@ GetOptions(
 		"user=s"               => \$Sw_user,
 		"verbose!"             => \$Sw_verbose,
 		"token=s"              => \$Sw_token,
+		"sort=s"               => \$Sw_sort,
 		"help"                 => sub { pod2usage(-exitval => 0, -verbose => 1) },
     "man"                  => sub { pod2usage(-exitval => 0, -verbose => 2) }
 	)
@@ -55,7 +56,8 @@ open HTMLFILE, ">$Outfile" || croak "Couldn't open '$Outfile'\n";
 report( user => $Sw_user,
   organization => $Sw_org,
 	token => $Sw_token,
-	verbose => $Sw_verbose );
+	verbose => $Sw_verbose,
+	sort => $Sw_sort );
 
 print "Report is in '$Outfile'\n";
 close HTMLFILE;
@@ -74,14 +76,16 @@ ghreport - Generates a status of the User or Organization's repositories on gith
 
 =head1 SYNOPSIS
 
- phlow -organization|user handle [-token token] [-verbose]
+ phlow -organization|user handle [-token token] [-verbose] [-sort sort_order]
  phlow -help | -man
 
 B<Example>
 
+  $ ghreport -user lakruzz -sort +private,-open_issues,+name
+
 To generate a report of both public and private repos on the organization named 'Praqma', while printing the REST calls to github:
 
- $ ghreport -org praqma -verbose -token 89chdaf89f186add688db69a8823dc21d9b8f6
+  $ ghreport -org praqma -verbose -token 89chdaf89f186add688db69a8823dc21d9b8f6
 
 =head1 OPTIONS
 
@@ -112,6 +116,17 @@ And if you want the manual page as a html:
 =item B< C<< -organization|-user handle >> >
 
 The organization or user (the GitHub handle) to report on.
+
+=item B< C<< -sort sort_order >> >
+
+Sort_order is a comma separated list of keys to sort by each item may be prefixed with C<-> for decending and C<+> for Ascending (ascending is used id the prefix is omitted):
+
+E.g.
+
+  +private,-open_issues,+name
+
+The keys can be any valis 1st level key in the JSON returned by GitHub API.
+
 
 =item B< C<< -token token >> >
 
@@ -263,17 +278,24 @@ Will be used as a boolean to indicate if execution should be verbose or silent. 
 
   };
 
+  if ($opt{sort}){
+		sort_array_of_hashes(\@repo_json, $opt{sort});
+	}
+
 	print HTMLFILE &html_begin();
+
+	print HTMLFILE '<h1>@'.$opt{user}.$opt{organization}.' at GitHub</h1>';
 
 	use DateTime;
 	my $dt = DateTime->now;
 	my $time = join ' ', $dt->ymd, $dt->hms;
 
-	print HTMLFILE '<div class="row"><div>Report generated <em>'.$time.'</em></div></div>';
+	print HTMLFILE '<div class="row"><div class="cell">Report generated <em>'.$time.'</em></div></div>';
 
-  print HTMLFILE '<div class="row">';
+	defined($Sw_sort) && 	print HTMLFILE '<div><div class="cell">Using order <em>'.$Sw_sort.'</em></div></div>';
+
+
 	print HTMLFILE column_headers(\%Header_row);
-	print HTMLFILE '</div>';
 
 	foreach my $j (@repo_json){
 
@@ -502,6 +524,74 @@ Will contain the value returned from the key in the header.
 	return $status;
 };
 
+sub sort_array_of_hashes($$){
+
+=head2 sort_array_of_hashes
+
+Sort's an array (ref) of hashes by multiple sort orders
+
+B<Input> $array_ref, $sort_order
+
+=over
+
+=item B< C<<array_ref>> > I<(scalar) [required]>
+
+A refernce to the array of hashes, that shall be sorted
+
+=item B< C<<sort_order>> > I<(scalar) [required]>
+
+A comma separated list of keys to sort by each item may be prefixed with C<-> for decending and C<+> for Ascending (ascending is used id the prefix is omitted):
+
+E.g.
+
+  +private,-open_issues,+name
+
+B<Returns> void
+
+=cut
+
+	my $array_ref = shift;
+	my $sortorder = shift;
+	my ($next, @array_rest) = split(/,/,$sortorder );
+	my $rest = (@array_rest)? join (",", @array_rest) : undef;
+#	print "SORTORDER:$sortorder\nSORT:\nfirst:$next  rest:$rest\n";
+
+	$rest && do {sort_array_of_hashes($array_ref, $rest)};
+
+
+	$next =~ /^(\-|\+)*(.+)$/;
+	my $asc = 1;
+	my $key = (defined($2))? $2 :$1;
+	$asc = (defined($2) && $1 =~ /\-/)? 0 : 1;
+
+	if ($asc) {
+		if ($array_ref->[0]{$key} =~ /^\d+?$/){
+			$Sw_verbose && print "Sort: Ascending, Numeric \[$key\]\n";
+			@{$array_ref} = sort {
+		    lc($a->{$key}) <=> lc($b->{$key})
+	    } @{$array_ref}
+		} else {
+			$Sw_verbose && print "Sort: Ascending, String \[$key\]\n";
+			@{$array_ref} = sort {
+		    lc($a->{$key}) cmp lc($b->{$key})
+	    } @{$array_ref}
+		}
+	}
+	else {
+		if ($array_ref->[0]{$key} =~ /^\d+?$/){
+			$Sw_verbose && print "Sort: Decending, Numeric \[$key\]\n";
+			@{$array_ref} = sort {
+		    lc($b->{$key}) <=> lc($a->{$key})
+	    } @{$array_ref}
+		} else {
+			$Sw_verbose && print "Sort: Decending, String \[$key\]\n";
+			@{$array_ref} = sort {
+		    lc($b->{$key}) cmp lc($a->{$key})
+	    } @{$array_ref}
+		}
+	}
+}
+
 sub get_links_from_header($){
 
 =head2 get_links_from_header
@@ -561,11 +651,15 @@ B<Returns:> C<html> I<(scalar)>
 
 	my $count = 1;
 
+	$retval = '<div class="row">';
+
 	foreach ( keys(%{$headers}) ){
 		$retval = $retval."\n".div( txt => $headers->{$count}[0],
 		  class => 'header '.$headers->{$count++}[1],
 			silent => 1	)
 	};
+	$retval = $retval.'</div>';
+
   return $retval;
 }
 
@@ -587,6 +681,11 @@ my $t = <<ENDHEADER;
   <head>
     <meta charset='utf-8'>
 		<style>
+		h1 {
+			font-weight: bold;
+      color: #333;
+      font-family: sans-serif;
+		}
 		.header {
       font-weight: bold;
       background-color: #000;
