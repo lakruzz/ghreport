@@ -973,7 +973,7 @@ Will contain the (case sensitive) name of the readme file.
 			# Find the frontmatter;
 			${$opt{readme_name}} = $json[0]->{name};
 			${$opt{readme_url}} = $json[0]->{html_url};
-			if ( $res =~ /^\s*---\s*(.*)\s*---\s*/) {
+			if ( $res =~ /^\s*---\s*(.*?)\s*---\s*/s) {
         ${$opt{frontmatter}} = $1;
 				return 1;
 			};
