@@ -18,7 +18,7 @@ use lib dirname(__FILE__);
 
 # Define the global variables that are used to cache the value of our options
 our (
-	$Sw_org, $Sw_user, $Sw_token, $Sw_verbose, $Outfile, %Header_row, $Sw_sort
+	$Sw_org, $Sw_user, $Sw_token, $Sw_verbose, $Outfile, $Outjson, %Header_row, $Sw_sort, $Sw_json
 );
 
 %Header_row = (  # order => ( description, classes)
@@ -40,6 +40,7 @@ GetOptions(
 		"verbose!"             => \$Sw_verbose,
 		"token=s"              => \$Sw_token,
 		"sort=s"               => \$Sw_sort,
+		"json"                 => \$Sw_json,
 		"help"                 => sub { pod2usage(-exitval => 0, -verbose => 1) },
     "man"                  => sub { pod2usage(-exitval => 0, -verbose => 2) }
 	)
@@ -51,7 +52,13 @@ GetOptions(
 # Open html report file
 my($basename, $dir, $suffix) = fileparse(__FILE__,qr/\.[^.]*/);
 $Outfile = lc( $dir.$basename."-".$Sw_user.$Sw_org.'.html' );
+$Outjson = lc( $dir.$basename."-".$Sw_user.$Sw_org.'.json' );
+
 open HTMLFILE, ">$Outfile" || croak "Couldn't open '$Outfile'\n";
+
+if (defined($Sw_json)){
+	open JSONFILE, ">$Outjson" || croak "Couldn't open '$Outjson'\n";
+}
 
 report( user => $Sw_user,
   organization => $Sw_org,
@@ -76,7 +83,7 @@ ghreport - Generates a status of the User or Organization's repositories on gith
 
 =head1 SYNOPSIS
 
- phlow -organization|user handle [-token token] [-verbose] [-sort sort_order]
+ phlow -organization|user handle [-token token] [-verbose] [-sort sort_order] [-json]
  phlow -help | -man
 
 B<Example>
@@ -133,6 +140,10 @@ The keys can be any valis 1st level key in the JSON returned by GitHub API.
 Token required to access private data.
 
 Create the token from your L<GitHub account|https://github.com/settings/tokens>
+
+=item B< C<< -json >> >
+
+Will generate the report in JSON format as well. (The report will be in a file named C<ghreport-[user|organization].json > )
 
 =item B< C<< -help >> >
 
@@ -297,44 +308,61 @@ Will be used as a boolean to indicate if execution should be verbose or silent. 
 
 	print HTMLFILE column_headers(\%Header_row);
 
+	my @json_list;
+
 	foreach my $j (@repo_json){
 
 		my $column = 0;
 
     print HTMLFILE "<div class='row'>";
+		my %json;
 
 		print HTMLFILE div (
 		  txt =>    $j->{ name },
       class =>  $Header_row{++$column}[1],
+			key =>  $Header_row{$column}[0],
 			id => $j->{name},
 			link => $j->{html_url},
-			silent => 1 );
+			silent => 1,
+			json => \%json );
 
 		print HTMLFILE div (
 		  txt => $j->{description},
       class => $Header_row{++$column}[1],
-			silent => 1);
+			key =>  $Header_row{$column}[0],
+			silent => 1,
+			json => \%json );
 
 	  print HTMLFILE div ( txt => ($j->{private})? 'Private' : 'Public',
 		  class => $Header_row{++$column}[1],
-			silent => 1	);
+			key =>  $Header_row{$column}[0],
+			silent => 1,
+			json => \%json	);
 
 		print HTMLFILE div ( txt => ($j->{fork} )? 'Fork' : 'Origin',
 		  class => $Header_row{++$column}[1],
-			silent => 1	);
+			key =>  $Header_row{$column}[0],
+			silent => 1,
+			json => \%json	);
 
 		print HTMLFILE div ( txt => $j->{default_branch},
 	    class => $Header_row{++$column}[1],
-			silent => 1);
+			key =>  $Header_row{$column}[0],
+			silent => 1,
+			json => \%json);
 
 		print HTMLFILE div ( txt => $j->{open_issues},
 	    class => $Header_row{++$column}[1],
+			key =>  $Header_row{$column}[0],
 			silent => 1,
-			link => $j->{html_url}.'/issues');
+			link => $j->{html_url}.'/issues',
+			json => \%json);
 
 		print HTMLFILE div ( txt => $j->{language},
 	    class => $Header_row{++$column}[1],
-			silent => 1);
+			key =>  $Header_row{$column}[0],
+			silent => 1,
+			json => \%json);
 
     my ($fm, $r_name, $r_url );
 
@@ -346,20 +374,30 @@ Will be used as a boolean to indicate if execution should be verbose or silent. 
 
 		print HTMLFILE div ( txt => $r_name,
 	    class => $Header_row{++$column}[1],
+			key =>  $Header_row{$column}[0],
 			silent => 1,
-			link => $r_url);
+			link => $r_url,
+			json => \%json);
 
     $fm =~ s/ /\&nbsp/g;
 		$fm =~ s/\n/\<\/br\>/g;
 		print HTMLFILE div ( txt => $fm,
 	    class => $Header_row{++$column}[1],
-			silent => 1);
+			key =>  $Header_row{$column}[0],
+			silent => 1,
+			json => \%json);
 
 		print HTMLFILE "</div>";
 
-	};
+		push(@json_list, \%json);
 
+	};
 	print HTMLFILE &html_end();
+	defined $Sw_json && do {
+		print JSONFILE JSON::PP->new->utf8->pretty(1)->encode(\@json_list);
+		print "JSON is in '$Outjson'\n";
+
+	};
 };
 
 sub ghapi ($){
@@ -883,6 +921,7 @@ Contains a link that will be used a link C<< <A href="..."> >> for the C<txt> in
 	my $retval = "<div".$id.$class.$style.">\n".
 	             "  ".$a_1.$opt{txt}.$a_2."\n".
 						   "</div>"."\n";
+  defined $opt{json} && do { $opt{json}->{$opt{key}} = $opt{txt}; };
 
 	print  $retval unless defined $opt{silent}; #TODO 'silent' should be true, not just defined
   return $retval;
