@@ -308,6 +308,8 @@ Will be used as a boolean to indicate if execution should be verbose or silent. 
 
 	print HTMLFILE column_headers(\%Header_row);
 
+	print HTMLFILE '<div id="reportbody">';
+
 	my @json_list;
 
 	foreach my $j (@repo_json){
@@ -392,6 +394,8 @@ Will be used as a boolean to indicate if execution should be verbose or silent. 
 		push(@json_list, \%json);
 
 	};
+	print HTMLFILE '</div>';
+
 	print HTMLFILE &html_end();
 	defined $Sw_json && do {
 		print JSONFILE JSON::PP->new->utf8->pretty(1)->encode(\@json_list);
@@ -693,6 +697,7 @@ B<Returns:> C<html> I<(scalar)>
 
 	foreach ( keys(%{$headers}) ){
 		$retval = $retval."\n".div( txt => $headers->{$count}[0],
+  		onclick => "sort_col(this,$count)",
 		  class => 'header '.$headers->{$count++}[1],
 			silent => 1	)
 	};
@@ -771,6 +776,8 @@ my $t = <<ENDHEADER;
       text-shadow: #e8910f 0px 0px 2px;
     }
 		</style>
+		<script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+		<script src="ghreport.js"></script>
   </head>
   <body>
 
@@ -911,14 +918,16 @@ Contains a link that will be used a link C<< <A href="..."> >> for the C<txt> in
 =cut
 
 	my %opt = @_;
-	my $id     = defined $opt{id}       ? ' id="'.$opt{id}.'"'            : '';
-	my $class  = defined $opt{class}    ? ' class="'.$opt{class}.'"'      : '';
-	my $style  = defined $opt{style}    ? ' style="'.$opt{style}.'"'      : '';
-  my $target = $opt{link} =~ /^http/  ? ' target="_blank" '             : '';
+	my $id     = defined $opt{id}        ? ' id="'.$opt{id}.'" '           : '';
+	my $class  = defined $opt{class}     ? ' class="'.$opt{class}.'" '     : '';
+	my $style  = defined $opt{style}     ? ' style="'.$opt{style}.'" '     : '';
+  my $target = $opt{link} =~ /^http/   ? ' target="_blank" '             : '';
+  my $onclick = defined $opt{onclick}  ? ' onclick="'.$opt{onclick}.'" ' : '';
+
 	my $a_1    = defined $opt{link}     ? ' <a href="'.$opt{link}.'"'.$target.'>'    : '';
 	my $a_2    = defined $opt{link}     ? ' </a>'                         : '';
 
-	my $retval = "<div".$id.$class.$style.">\n".
+	my $retval = "<div".$id.$class.$style.$onclick.">\n".
 	             "  ".$a_1.$opt{txt}.$a_2."\n".
 						   "</div>"."\n";
   defined $opt{json} && do { $opt{json}->{$opt{key}} = $opt{txt}; };
