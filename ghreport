@@ -697,8 +697,9 @@ B<Returns:> C<html> I<(scalar)>
 
 	foreach ( keys(%{$headers}) ){
 		$retval = $retval."\n".div( txt => $headers->{$count}[0],
-  		onclick => "sort_col(this,$count)",
+  		onclick => "sortreport(this,$count)",
 		  class => 'header '.$headers->{$count++}[1],
+			style => 'cursor : hand;',
 			silent => 1	)
 	};
 	$retval = $retval.'</div>';
