@@ -90,7 +90,7 @@ ghreport - Generates a status of the User or Organization's repositories on gith
 
 =head1 SYNOPSIS
 
- phlow -organization|user handle [-token token] [-verbose] [-sort sort_order] [-json]
+ phlow -organization|user handle [-token token] [-verbose] [-sort sort_order] [-json] [-[no]embed]
  phlow -help | -man
 
 B<Example>
@@ -151,6 +151,12 @@ Create the token from your L<GitHub account|https://github.com/settings/tokens>
 =item B< C<< -json >> >
 
 Will generate the report in JSON format as well. (The report will be in a file named C<ghreport-[user|organization].json > )
+
+=item B< C<< -[no]embed >> >
+
+Will determine if the stylesheet (C<ghreport.css>) and the javascript (C<ghreport.js>) will be linked as external dependencies or embedded into one selfcontained html file.
+
+C<< -embed >> is default.
 
 =item B< C<< -help >> >
 
