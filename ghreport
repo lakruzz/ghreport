@@ -21,6 +21,9 @@ our (
 	$Sw_org, $Sw_user, $Sw_token, $Sw_verbose, $Outfile, $Outjson, %Header_row, $Sw_sort, $Sw_json
 );
 
+# Holds the global variables that are used to cache the value of our options
+our %Options;
+
 %Header_row = (  # order => ( description, classes)
   1 => ['Name',                  'cell width-standard'],
 	2 => ['Description',           'cell width-wide'],
@@ -38,6 +41,7 @@ GetOptions(
     "organization=s"       => \$Sw_org,
 		"user=s"               => \$Sw_user,
 		"verbose!"             => \$Sw_verbose,
+		"embed!"               => \$Options{embed},
 		"token=s"              => \$Sw_token,
 		"sort=s"               => \$Sw_sort,
 		"json"                 => \$Sw_json,
@@ -53,8 +57,11 @@ GetOptions(
 my($basename, $dir, $suffix) = fileparse(__FILE__,qr/\.[^.]*/);
 $Outfile = lc( $dir.$basename."-".$Sw_user.$Sw_org.'.html' );
 $Outjson = lc( $dir.$basename."-".$Sw_user.$Sw_org.'.json' );
+$Options{jsfile} = lc( $dir.$basename.'.js' );
+$Options{cssfile} = lc( $dir.$basename.'.css' );
 
 open HTMLFILE, ">$Outfile" || croak "Couldn't open '$Outfile'\n";
+
 
 if (defined($Sw_json)){
 	open JSONFILE, ">$Outjson" || croak "Couldn't open '$Outjson'\n";
@@ -203,6 +210,7 @@ The function is essentially an assertion - if anything is found to be out of ord
 	  -message => "Both -organization and -user can not be used together");
   # Defaults
 	$Sw_verbose = defined($Sw_verbose) ? $Sw_verbose : 0;
+	$Options{embed} = defined($Options{embed}) ? $Options{embed} : 1;
 };
 
 sub report ($){
@@ -301,7 +309,7 @@ Will be used as a boolean to indicate if execution should be verbose or silent. 
 	my $dt = DateTime->now;
 	my $time = join ' ', $dt->ymd, $dt->hms;
 
-	print HTMLFILE '<div class="row"><div class="cell">Report generated <em>'.$time.'</em></div></div>';
+	print HTMLFILE '<div class="row"><div class="cell">Report generated <em>'.$time.'</em></div><div class="cell" style="font-weight:bold;">Click on a column header to sort the report conten.</div></div>';
 
 	defined($Sw_sort) && 	print HTMLFILE '<div><div class="cell">Using order <em>'.$Sw_sort.'</em></div></div>';
 
@@ -720,69 +728,32 @@ B<Returns:> C<html> I<(scalar)>
 
 =cut
 
+my $jstag;
+my $csstag;
+if ($Options{embed}){
+	croak unless open JSFILE, "<", $Options{jsfile};
+	$jstag = "<script>\n".join('',<JSFILE>)."</script>\n";
+
+	croak unless open CSSFILE, "<", $Options{cssfile};
+	$csstag = "<style>\n".join('',<CSSFILE>)."</style>\n";
+
+} else {
+	$jstag = '<script src="'.$Options{jsfile}.'"></script>'."\n";
+	$csstag = '<link rel="stylesheet" href="'.$Options{cssfile}.'">'."\n";
+};
+
 my $t = <<ENDHEADER;
 <html lang="en">
   <head>
     <meta charset='utf-8'>
-		<style>
-		h1 {
-			font-weight: bold;
-      color: #333;
-      font-family: sans-serif;
-		}
-		.header {
-      font-weight: bold;
-      background-color: #000;
-      height: 2em;
-      color: #FFF;
-      font-family: sans-serif;
-      border-bottom-style: none;
-    }
-		.cell {
-      vertical-align: top;
-      padding: 5px;
-      float: left;
-      display: block;
-    }
-		.row {
-			clear:left;
-			float: left;
-			display: block;
-			border-bottom: #FF9800;
-			border-bottom-style: solid;
-			border-bottom-width: 0.1em;
-			min-height: 1.1em;
-		}
-		.width-tiny {
-			width : 70px
-		}
-		.width-narrow {
-			width: 100px;
-		}
-		.width-standard {
-			width : 200px;
-		}
-		.width-wide {
-			width : 350px;
-		}
-		a {
-      color: #823205;
-      font-weight: 400;
-      text-decoration: none;
-      transition: color 0.5s ease;
-      transition: text-shadow 0.5s ease;
-    }
-		a:hover {
-      color: #bb2a0b;
-      text-shadow: #e8910f 0px 0px 2px;
-    }
-		</style>
 		<script src="https://code.jquery.com/jquery-1.10.2.js"></script>
-		<script src="ghreport.js"></script>
-  </head>
-  <body>
 
 ENDHEADER
+
+$t = $t.$jstag.$csstag.
+"</head>
+<body>";
+
 
 return $t;
 };

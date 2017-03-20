@@ -1,0 +1,51 @@
+h1 {
+  font-weight: bold;
+  color: #333;
+  font-family: sans-serif;
+}
+.header {
+  font-weight: bold;
+  background-color: #000;
+  height: 2em;
+  color: #FFF;
+  font-family: sans-serif;
+  border-bottom-style: none;
+}
+.cell {
+  vertical-align: top;
+  padding: 5px;
+  float: left;
+  display: block;
+}
+.row {
+  clear:left;
+  float: left;
+  display: block;
+  border-bottom: #FF9800;
+  border-bottom-style: solid;
+  border-bottom-width: 0.1em;
+  min-height: 1.1em;
+}
+.width-tiny {
+  width : 70px
+}
+.width-narrow {
+  width: 100px;
+}
+.width-standard {
+  width : 200px;
+}
+.width-wide {
+  width : 350px;
+}
+a {
+  color: #823205;
+  font-weight: 400;
+  text-decoration: none;
+  transition: color 0.5s ease;
+  transition: text-shadow 0.5s ease;
+}
+a:hover {
+  color: #bb2a0b;
+  text-shadow: #e8910f 0px 0px 2px;
+}
